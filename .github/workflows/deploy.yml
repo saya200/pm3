@@ -1,0 +1,60 @@
+name: نشر الموقع (GitHub Pages)
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: تحقق من الإعدادات
+        run: |
+          missing=""
+          [ -z "${{ secrets.SECTION_SLUG }}" ] && missing="$missing SECTION_SLUG(secret)"
+          [ -z "${{ vars.FIREBASE_API_KEY }}" ] && missing="$missing FIREBASE_API_KEY(variable)"
+          [ -z "${{ vars.FIREBASE_PROJECT_ID }}" ] && missing="$missing FIREBASE_PROJECT_ID(variable)"
+          if [ -n "$missing" ]; then echo "::error::إعدادات ناقصة:$missing — راجع README"; exit 1; fi
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - name: البناء
+        run: npm run build
+        env:
+          # المسار العشوائي سر (Secret) حتى لا يظهر في المستودع العام
+          SECTION_SLUG: ${{ secrets.SECTION_SLUG }}
+          BASE_PATH: /${{ github.event.repository.name }}/
+          VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
+          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
+          VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
+          VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
+          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.FIREBASE_MESSAGING_SENDER_ID }}
+          VITE_FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

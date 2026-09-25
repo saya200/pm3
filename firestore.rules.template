@@ -1,0 +1,183 @@
+rules_version = '2';
+
+// ملاحظة: لا تعدّل firestore.rules مباشرة — يُولَّد من هذا القالب عبر `npm run rules`
+// لأن مسار الشعبة العشوائي (__SECTION_SLUG__) لا يُحفظ في المستودع.
+//
+// الفكرة الأمنية:
+// - لا حسابات ولا كلمات مرور. كل جهاز يحصل على هوية مجهولة (Firebase Anonymous Auth)
+//   تُستخدم فقط لمعرفة "صاحب التنبيه" على نفس الجهاز.
+// - البيانات لا تُقرأ إلا تحت مسار الشعبة العشوائي، ولا يمكن سرد الشعب الموجودة.
+// - الإدمن: جهاز أدخل الكود الصحيح (المخزّن في adminConfig/main والذي لا يقرؤه أي عميل).
+//   تغيير الكود يُلغي صلاحية كل الأجهزة القديمة فورًا.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      let adminDoc = /databases/$(database)/documents/sections/__SECTION_SLUG__/admins/$(request.auth.uid);
+      let cfgDoc = /databases/$(database)/documents/sections/__SECTION_SLUG__/adminConfig/main;
+      return signedIn()
+        && exists(adminDoc)
+        && exists(cfgDoc)
+        && get(adminDoc).data.code == get(cfgDoc).data.code;
+    }
+
+    function farFuture() {
+      return timestamp.date(3000, 1, 1);
+    }
+
+    function isNameOk(n) {
+      return n is string && n.size() <= 40;
+    }
+
+    function isValidAlert(d) {
+      return d.type in ['assignment', 'exam', 'discussion', 'announcement']
+        && d.subject in ['e-pm', 'feasibility', 'finance', 'supply', 'quality', 'risk', 'cost', 'capstone']
+        && d.title is string && d.title.size() >= 1 && d.title.size() <= 300
+        && d.details is string && d.details.size() <= 20000
+        && (d.dueAt == null || d.dueAt is timestamp)
+        && (d.type == 'announcement' || d.dueAt is timestamp)
+        && (d.imageId == null || (d.imageId is string && d.imageId.size() <= 64))
+        && isNameOk(d.authorName)
+        && (d.archivedAt == null || d.archivedAt is timestamp)
+        && (d.deletedAt == null || d.deletedAt is timestamp)
+        && d.activeUntil is timestamp
+        && (d.archivedAt != null
+              ? d.activeUntil == d.archivedAt
+              : (d.dueAt == null ? d.activeUntil == farFuture() : d.activeUntil == d.dueAt));
+    }
+
+    function changedKeys() {
+      return request.resource.data.diff(resource.data).affectedKeys();
+    }
+
+    match /sections/__SECTION_SLUG__ {
+
+      match /alerts/{alertId} {
+        allow read: if signedIn();
+
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly([
+               'type', 'subject', 'title', 'details', 'dueAt', 'activeUntil', 'archivedAt',
+               'imageId', 'authorName', 'authorUid', 'createdAt', 'updatedAt',
+               'deletedAt', 'dupBy', 'replyCount'])
+          && isValidAlert(request.resource.data)
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.createdAt == request.time
+          && request.resource.data.updatedAt == request.time
+          && request.resource.data.archivedAt == null
+          && request.resource.data.deletedAt == null
+          && request.resource.data.dupBy == []
+          && request.resource.data.replyCount == 0;
+
+        allow update: if signedIn() && (
+          // ١) صاحب التنبيه أو الإدمن: تعديل المحتوى/الموعد، أرشفة، حذف ناعم، استرجاع
+          (
+            (resource.data.authorUid == request.auth.uid || isAdmin())
+            && changedKeys().hasOnly([
+                 'type', 'subject', 'title', 'details', 'dueAt', 'activeUntil', 'archivedAt',
+                 'imageId', 'authorName', 'updatedAt', 'deletedAt'])
+            && isValidAlert(request.resource.data)
+            && request.resource.data.updatedAt == request.time
+          )
+          // ٢) أي طالب: تعليم/إلغاء تعليم "مكرر محتمل" باسمه هو فقط
+          || (
+            changedKeys().hasOnly(['dupBy'])
+            && request.resource.data.dupBy is list
+            && request.resource.data.dupBy.size() <= 200
+            && (
+              request.resource.data.dupBy.toSet() == resource.data.dupBy.toSet().union([request.auth.uid].toSet())
+              || request.resource.data.dupBy.toSet() == resource.data.dupBy.toSet().difference([request.auth.uid].toSet())
+            )
+          )
+          // ٣) عدّاد الردود (يتغير بمقدار ١ مع إضافة/حذف رد)
+          || (
+            changedKeys().hasOnly(['replyCount'])
+            && request.resource.data.replyCount is int
+            && request.resource.data.replyCount >= 0
+            && (request.resource.data.replyCount == resource.data.replyCount + 1
+                || request.resource.data.replyCount == resource.data.replyCount - 1)
+          )
+        );
+
+        // الحذف النهائي للإدمن فقط
+        allow delete: if isAdmin();
+
+        match /replies/{replyId} {
+          allow read: if signedIn();
+          allow create: if signedIn()
+            && exists(/databases/$(database)/documents/sections/__SECTION_SLUG__/alerts/$(alertId))
+            && request.resource.data.keys().hasOnly(['text', 'authorName', 'authorUid', 'createdAt', 'deletedAt'])
+            && request.resource.data.text is string
+            && request.resource.data.text.size() >= 1
+            && request.resource.data.text.size() <= 4000
+            && isNameOk(request.resource.data.authorName)
+            && request.resource.data.authorUid == request.auth.uid
+            && request.resource.data.createdAt == request.time
+            && request.resource.data.deletedAt == null;
+          // حذف ناعم للرد من صاحبه أو الإدمن (واسترجاعه)
+          allow update: if signedIn()
+            && (resource.data.authorUid == request.auth.uid || isAdmin())
+            && changedKeys().hasOnly(['deletedAt'])
+            && (request.resource.data.deletedAt == null || request.resource.data.deletedAt == request.time);
+          allow delete: if isAdmin();
+        }
+      }
+
+      // الصور مخزنة (بعد ضغطها بالمتصفح) كمستندات مستقلة حتى لا تثقل قائمة التنبيهات
+      match /images/{imageId} {
+        allow read: if signedIn();
+        allow create: if signedIn()
+          && request.resource.data.keys().hasOnly(['alertId', 'authorUid', 'dataUrl', 'width', 'height', 'createdAt'])
+          && request.resource.data.authorUid == request.auth.uid
+          && request.resource.data.alertId is string
+          && request.resource.data.dataUrl is string
+          && request.resource.data.dataUrl.size() <= 900000
+          && request.resource.data.dataUrl.matches('^data:image/(jpeg|webp|png);base64,.*')
+          && request.resource.data.width is int
+          && request.resource.data.height is int
+          && request.resource.data.createdAt == request.time
+          && getAfter(/databases/$(database)/documents/sections/__SECTION_SLUG__/alerts/$(request.resource.data.alertId)).data.imageId == imageId
+          && (
+            getAfter(/databases/$(database)/documents/sections/__SECTION_SLUG__/alerts/$(request.resource.data.alertId)).data.authorUid == request.auth.uid
+            || isAdmin()
+          );
+        allow delete: if signedIn() && (resource.data.authorUid == request.auth.uid || isAdmin());
+      }
+
+      // رموز Push لكل جهاز — لا يقرؤها أي عميل؛ يقرؤها فقط سكربت الإشعارات (Admin SDK)
+      match /pushTokens/{tokenId} {
+        allow create, update: if signedIn()
+          && request.resource.data.keys().hasOnly(['token', 'uid', 'platform', 'updatedAt'])
+          && request.resource.data.uid == request.auth.uid
+          && request.resource.data.token is string
+          && request.resource.data.token.size() <= 1024
+          && request.resource.data.platform is string
+          && request.resource.data.platform.size() <= 200
+          && request.resource.data.updatedAt == request.time
+          && (resource == null || resource.data.uid == request.auth.uid);
+        allow delete: if signedIn() && resource.data.uid == request.auth.uid;
+      }
+
+      // كود الإدمن: لا يُقرأ ولا يُكتب من المتصفح إطلاقًا (يُضبط من Firebase Console أو سكربت)
+      match /adminConfig/{doc} {
+        allow read, write: if false;
+      }
+
+      // جهاز الإدمن يسجّل نفسه بإدخال الكود الصحيح
+      match /admins/{uid} {
+        allow get: if signedIn() && uid == request.auth.uid && isAdmin();
+        allow create, update: if signedIn()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['code', 'createdAt'])
+          && request.resource.data.createdAt == request.time
+          && exists(/databases/$(database)/documents/sections/__SECTION_SLUG__/adminConfig/main)
+          && request.resource.data.code == get(/databases/$(database)/documents/sections/__SECTION_SLUG__/adminConfig/main).data.code;
+        allow delete: if signedIn() && uid == request.auth.uid;
+      }
+    }
+  }
+}

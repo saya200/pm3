@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env.local
+.env.*.local
+firestore.rules
+*.log
+test-results/
+playwright-report/
+service-account*.json
+.firebase/
+notifier/node_modules/
+firestore-debug.log

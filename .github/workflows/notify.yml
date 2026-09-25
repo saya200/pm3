@@ -1,0 +1,33 @@
+name: إرسال الإشعارات
+
+# GitHub يشغّل الجداول بأقل فاصل 5 دقائق وقد يتأخر أحيانًا (خصوصًا وقت الذروة).
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: notify
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: notifier/package-lock.json
+      - run: npm ci
+        working-directory: notifier
+      - run: node notifier/run.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          SECTION_SLUG: ${{ secrets.SECTION_SLUG }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/s/${{ secrets.SECTION_SLUG }}/

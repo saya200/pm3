@@ -1,0 +1,42 @@
+{
+  "name": "section3-alerts",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "منصة تنبيهات الشعبة الثالثة - دبلوم عالي إدارة المشاريع",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build && node scripts/postbuild.mjs",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "rules": "node scripts/gen-rules.mjs",
+    "emulators": "node scripts/gen-rules.mjs && firebase emulators:start --only auth,firestore --project demo-section3",
+    "test:rules": "node scripts/gen-rules.mjs && firebase emulators:exec --only auth,firestore --project demo-section3 \"vitest run --config vitest.emulator.config.ts\"",
+    "test:e2e": "SECTION_SLUG=e2e-section-test node scripts/gen-rules.mjs && firebase emulators:exec --only auth,firestore --project demo-section3 \"playwright test\"",
+    "notify": "node notifier/run.mjs",
+    "admin:set-code": "node notifier/set-admin-code.mjs"
+  },
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@playwright/test": "^1.56.1",
+    "@types/react": "^18.3.31",
+    "@types/react-dom": "^18.3.7",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "firebase-admin": "^14.5.0",
+    "globals": "^17.12.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.70.1",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  }
+}
