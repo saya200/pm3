@@ -1,8 +1,8 @@
-name: نشر الموقع (GitHub Pages)
+name: نشر الموقع (GitHub Pages + Firebase)
 
+# يعمل عند كل دفع للفرع الافتراضي للمستودع، أو يدويًا من تبويب Actions
 on:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -16,35 +16,49 @@ concurrency:
 
 jobs:
   build:
+    if: github.ref_name == github.event.repository.default_branch
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: تحقق من الأسرار
+        run: |
+          missing=""
+          [ -z "${{ secrets.SECTION_SLUG }}" ] && missing="$missing SECTION_SLUG"
+          [ -z "${{ secrets.FIREBASE_SERVICE_ACCOUNT }}" ] && missing="$missing FIREBASE_SERVICE_ACCOUNT"
+          if [ -n "$missing" ]; then echo "::error::أسرار ناقصة في Settings → Secrets and variables → Actions:$missing"; exit 1; fi
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - name: تحقق من الإعدادات
-        run: |
-          missing=""
-          [ -z "${{ secrets.SECTION_SLUG }}" ] && missing="$missing SECTION_SLUG(secret)"
-          [ -z "${{ vars.FIREBASE_API_KEY }}" ] && missing="$missing FIREBASE_API_KEY(variable)"
-          [ -z "${{ vars.FIREBASE_PROJECT_ID }}" ] && missing="$missing FIREBASE_PROJECT_ID(variable)"
-          if [ -n "$missing" ]; then echo "::error::إعدادات ناقصة:$missing — راجع README"; exit 1; fi
       - run: npm ci
       - run: npm run lint
       - run: npm test
+
+      # قواعد الأمان + الفهارس + كود الإدمن تُنشر تلقائيًا على Firebase
+      - name: نشر قواعد الأمان والفهارس
+        env:
+          SECTION_SLUG: ${{ secrets.SECTION_SLUG }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
+          npm run rules
+          npx --yes firebase-tools@15 deploy --only firestore:rules,firestore:indexes --non-interactive --force
+      - name: ضبط كود الإدمن
+        env:
+          SECTION_SLUG: ${{ secrets.SECTION_SLUG }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          ADMIN_CODE: ${{ secrets.ADMIN_CODE }}
+        run: |
+          if [ -z "$ADMIN_CODE" ]; then echo "ADMIN_CODE غير مضبوط — تخطي"; exit 0; fi
+          node notifier/set-admin-code.mjs "$ADMIN_CODE"
+
       - name: البناء
         run: npm run build
         env:
-          # المسار العشوائي سر (Secret) حتى لا يظهر في المستودع العام
+          # المسار العشوائي سر حتى لا يظهر في المستودع العام
           SECTION_SLUG: ${{ secrets.SECTION_SLUG }}
           BASE_PATH: /${{ github.event.repository.name }}/
-          VITE_FIREBASE_API_KEY: ${{ vars.FIREBASE_API_KEY }}
-          VITE_FIREBASE_AUTH_DOMAIN: ${{ vars.FIREBASE_AUTH_DOMAIN }}
-          VITE_FIREBASE_PROJECT_ID: ${{ vars.FIREBASE_PROJECT_ID }}
-          VITE_FIREBASE_APP_ID: ${{ vars.FIREBASE_APP_ID }}
-          VITE_FIREBASE_MESSAGING_SENDER_ID: ${{ vars.FIREBASE_MESSAGING_SENDER_ID }}
-          VITE_FIREBASE_VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist
