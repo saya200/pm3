@@ -34,16 +34,14 @@ jobs:
       - run: npm run lint
       - run: npm test
 
-      # قواعد الأمان + الفهارس + كود الإدمن تُنشر تلقائيًا على Firebase
-      - name: نشر قواعد الأمان والفهارس
+      # قواعد الأمان + كود الإدمن تُنشر تلقائيًا على Firebase
+      - name: نشر قواعد الأمان
         env:
           SECTION_SLUG: ${{ secrets.SECTION_SLUG }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          printf '%s' "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
-          export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           npm run rules
-          npx --yes firebase-tools@15 deploy --only firestore:rules,firestore:indexes --non-interactive --force
+          node scripts/deploy-rules.mjs
       - name: ضبط كود الإدمن
         env:
           SECTION_SLUG: ${{ secrets.SECTION_SLUG }}

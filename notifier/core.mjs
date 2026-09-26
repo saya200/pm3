@@ -97,7 +97,6 @@ export async function runOnce({ db, messaging, slug, siteUrl, now = Date.now(), 
   const sec = db.doc(`sections/${slug}`);
   const snap = await sec
     .collection('alerts')
-    .where('deletedAt', '==', null)
     .where('activeUntil', '>', new Date(now - HOUR))
     .get();
 

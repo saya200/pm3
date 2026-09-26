@@ -70,11 +70,16 @@ export function subscribeAlerts(
   onError: (e: Error) => void,
 ): () => void {
   const since = Timestamp.fromMillis(Date.now() - LIVE_ARCHIVE_DAYS * 86_400_000);
-  const q = query(alertsCol(), where('deletedAt', '==', null), where('activeUntil', '>', since));
+  // استعلام بحقل واحد (لا يحتاج فهرسًا مركبًا) — المحذوف يُستبعد في المتصفح
+  const q = query(alertsCol(), where('activeUntil', '>', since));
   return onSnapshot(
     q,
     { includeMetadataChanges: true },
-    (snap) => onData(snap.docs.map(toAlert), snap.metadata.fromCache),
+    (snap) =>
+      onData(
+        snap.docs.map(toAlert).filter((a) => a.deletedAt === null),
+        snap.metadata.fromCache,
+      ),
     onError,
   );
 }
@@ -82,15 +87,9 @@ export function subscribeAlerts(
 /** الأرشيف الأقدم من نافذة الاستماع الحي (تحميل لمرة واحدة) */
 export async function loadOlderArchive(): Promise<Alert[]> {
   const until = Timestamp.fromMillis(Date.now() - LIVE_ARCHIVE_DAYS * 86_400_000);
-  const q = query(
-    alertsCol(),
-    where('deletedAt', '==', null),
-    where('activeUntil', '<=', until),
-    orderBy('activeUntil', 'desc'),
-    limit(100),
-  );
+  const q = query(alertsCol(), where('activeUntil', '<=', until), orderBy('activeUntil', 'desc'), limit(100));
   const snap = await getDocs(q);
-  return snap.docs.map(toAlert);
+  return snap.docs.map(toAlert).filter((a) => a.deletedAt === null);
 }
 
 /** للإدمن: التنبيهات المحذوفة حذفًا ناعمًا */
