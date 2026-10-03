@@ -9,18 +9,19 @@ import { useOnline } from './hooks/useOnline';
 import { KEYS, readLocal, writeLocal } from './lib/local';
 import { applyFilters, partition, summaryLine, type Alert, type Filters } from './lib/model';
 import { AdminDialog } from './components/AdminDialog';
-import { CoursesSheet } from './components/CoursesSheet';
+import { CoursesPanel } from './components/CoursesPanel';
 import { AlertCard } from './components/AlertCard';
 import { AlertForm } from './components/AlertForm';
 import { AlertTable } from './components/AlertTable';
 import { AppContext, type AppCtx } from './components/AppContext';
 import { GridView } from './components/GridView';
-import { BellIcon, BookIcon, ChevronDown, GridIcon, ListIcon, PlusIcon, XIcon } from './components/Icons';
+import { BellIcon, ChevronDown, GridIcon, ListIcon, PlusIcon, XIcon } from './components/Icons';
 import { NotifyPanel, pushBannerText } from './components/NotifyPanel';
 import { useToast } from './components/Toasts';
 import { useAlertActions } from './components/useAlertActions';
 
 type View = 'list' | 'grid';
+type Tab = 'alerts' | 'courses';
 
 function useMedia(q: string): boolean {
   const [m, setM] = useState(() => window.matchMedia(q).matches);
@@ -102,7 +103,8 @@ function Board({ uid }: { uid: string }) {
   const [olderBusy, setOlderBusy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
-  const [coursesOpen, setCoursesOpen] = useState(false);
+  // التنبيهات دائمًا التبويب الافتراضي عند فتح الصفحة
+  const [tab, setTab] = useState<Tab>('alerts');
   const [deleted, setDeleted] = useState<Alert[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [pushState, setPushState] = useState<PushState>('checking');
@@ -255,24 +257,26 @@ function Board({ uid }: { uid: string }) {
             </div>
           </div>
           <div className="top-tools">
-            <div className="seg" role="group" aria-label="طريقة العرض">
-              <button
-                className={view === 'list' ? 'on' : ''}
-                onClick={() => setView('list')}
-                aria-pressed={view === 'list'}
-                aria-label="عرض القائمة"
-              >
-                <ListIcon />
-              </button>
-              <button
-                className={view === 'grid' ? 'on' : ''}
-                onClick={() => setView('grid')}
-                aria-pressed={view === 'grid'}
-                aria-label="عرض الصور"
-              >
-                <GridIcon />
-              </button>
-            </div>
+            {tab === 'alerts' && (
+              <div className="seg" role="group" aria-label="طريقة العرض">
+                <button
+                  className={view === 'list' ? 'on' : ''}
+                  onClick={() => setView('list')}
+                  aria-pressed={view === 'list'}
+                  aria-label="عرض القائمة"
+                >
+                  <ListIcon />
+                </button>
+                <button
+                  className={view === 'grid' ? 'on' : ''}
+                  onClick={() => setView('grid')}
+                  aria-pressed={view === 'grid'}
+                  aria-label="عرض الصور"
+                >
+                  <GridIcon />
+                </button>
+              </div>
+            )}
             <button
               className={`icon-btn round bell${pushState === 'enabled' ? ' on' : ''}`}
               onClick={() => setNotifyOpen(true)}
@@ -283,10 +287,7 @@ function Board({ uid }: { uid: string }) {
                 <span className="dot" />
               )}
             </button>
-            <button className="icon-btn round" onClick={() => setCoursesOpen(true)} aria-label="المقررات الدراسية">
-              <BookIcon />
-            </button>
-            {isDesktop && (
+            {isDesktop && tab === 'alerts' && (
               <button className="primary-btn add-desktop" onClick={() => setForm({ editing: null })}>
                 <PlusIcon /> إضافة تنبيه
               </button>
@@ -294,218 +295,251 @@ function Board({ uid }: { uid: string }) {
           </div>
         </header>
 
-        <p className="summary" aria-live="polite">
-          {loading ? 'جارٍ التحميل…' : active.length ? summaryLine(active) : 'لا توجد تنبيهات نشطة'}
-        </p>
-
-        {!online && (
-          <div className="notice warn">
-            لا يوجد اتصال بالإنترنت — تعرض آخر نسخة محفوظة، وستتحدث تلقائيًا عند عودة الاتصال.
-          </div>
-        )}
-        {online && error && <div className="notice warn">تعذر تحديث التنبيهات من الخادم. سنحاول تلقائيًا…</div>}
-        {online && !error && !loading && fromCache && alerts.length === 0 && (
-          <div className="notice">جارٍ الاتصال بالخادم…</div>
-        )}
-
-        {showBanner && (
-          <div className="push-banner">
-            <BellIcon size={16} />
-            <span>{banner.text}</span>
-            <button className="link-btn strong" onClick={() => setNotifyOpen(true)}>
-              {banner.cta}
-            </button>
-            <button
-              className="icon-btn"
-              aria-label="إخفاء"
-              onClick={() => {
-                setBannerDismissed(pushState);
-                writeLocal(KEYS.pushDismissed, pushState);
-              }}
-            >
-              <XIcon size={14} />
-            </button>
-          </div>
-        )}
-
-        {(active.length > 2 || filtered) && (
-          <div className="filters" role="toolbar" aria-label="تصفية">
-            <div className="chips">
-              <button
-                className={`fchip${filters.type === 'all' ? ' on' : ''}`}
-                onClick={() => setFilters((f) => ({ ...f, type: 'all' }))}
-              >
-                الكل
-              </button>
-              {TYPE_ORDER.map((t) => (
-                <button
-                  key={t}
-                  className={`fchip${filters.type === t ? ' on' : ''}`}
-                  style={
-                    filters.type === t
-                      ? { background: TYPES[t].bg, color: TYPES[t].fg, borderColor: TYPES[t].fg }
-                      : undefined
-                  }
-                  onClick={() => setFilters((f) => ({ ...f, type: f.type === t ? 'all' : t }))}
-                >
-                  {TYPES[t].label}
-                </button>
-              ))}
-              <span className="select-wrap small">
-                <select
-                  value={filters.subject}
-                  onChange={(e) => setFilters((f) => ({ ...f, subject: e.target.value }))}
-                  aria-label="المادة"
-                >
-                  <option value="all">كل المواد</option>
-                  {SUBJECTS.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
-                </select>
-                <ChevronDown size={14} className="select-chev" />
-              </span>
-            </div>
-          </div>
-        )}
-
-        <main>
-          {view === 'grid' ? (
-            <>
-              <h2 className="section-title">التنبيهات المرفق فيها صور</h2>
-              <GridView
-                alerts={shownActive}
-                now={now}
-                onOpen={(id) => {
-                  setView('list');
-                  setExpandedId(id);
-                  scrolledTo.current = null;
-                }}
-              />
-            </>
-          ) : loading ? (
-            <div className="cards">
-              {[0, 1, 2].map((i) => (
-                <div key={i} className="card skeleton" />
-              ))}
-            </div>
-          ) : shownActive.length === 0 ? (
-            <div className="empty">
-              {filtered ? (
-                <>
-                  <p className="empty-title">لا توجد تنبيهات نشطة بهذا التصفية</p>
-                  <button className="link-btn strong" onClick={() => setFilters({ type: 'all', subject: 'all' })}>
-                    عرض الكل
-                  </button>
-                </>
-              ) : (
-                <>
-                  <p className="empty-title">لا توجد تنبيهات نشطة حاليًا</p>
-                  <p className="muted">أي واجب أو اختبار أو إعلان جديد سيظهر هنا فورًا لكل الشعبة.</p>
-                  <button className="chip-btn" onClick={() => setForm({ editing: null })}>
-                    <PlusIcon size={15} /> أضف أول تنبيه
-                  </button>
-                </>
-              )}
-            </div>
-          ) : isDesktop ? (
-            <AlertTable alerts={shownActive} now={now} nearestId={shownNearest?.id ?? null} />
-          ) : (
-            <>
-              {shownNearest && <AlertCard alert={shownNearest} now={now} nearest />}
-              {shownActive.length > (shownNearest ? 1 : 0) && (
-                <>
-                  <h2 className="section-title">التنبيهات النشطة</h2>
-                  <div className="cards">
-                    {shownActive
-                      .filter((a) => a !== shownNearest)
-                      .map((a) => (
-                        <AlertCard key={a.id} alert={a} now={now} />
-                      ))}
-                  </div>
-                </>
-              )}
-            </>
-          )}
-
-          {view === 'list' && !loading && (
-            <section className="archive">
-              <button className="section-toggle" onClick={() => setShowArchive((s) => !s)} aria-expanded={showArchive}>
-                <span>المنتهية والأرشيف ({shownArchived.length})</span>
-                <ChevronDown className={`chev${showArchive ? ' up' : ''}`} size={16} />
-              </button>
-              {showArchive && (
-                <>
-                  {shownArchived.length === 0 ? (
-                    <p className="muted small pad">لا يوجد شيء في الأرشيف بعد.</p>
-                  ) : (
-                    renderList(shownArchived, { ended: true })
-                  )}
-                  {older === null && (
-                    <button
-                      className="link-btn pad"
-                      disabled={olderBusy}
-                      onClick={() => {
-                        setOlderBusy(true);
-                        loadOlderArchive()
-                          .then(setOlder, () => toast({ text: 'تعذر تحميل الأرشيف الأقدم', kind: 'error' }))
-                          .finally(() => setOlderBusy(false));
-                      }}
-                    >
-                      {olderBusy ? 'جارٍ التحميل…' : 'تحميل الأرشيف الأقدم (أكثر من 30 يومًا)'}
-                    </button>
-                  )}
-                </>
-              )}
-            </section>
-          )}
-
-          {isAdmin && view === 'list' && (
-            <section className="archive admin-zone">
-              <button className="section-toggle" onClick={() => setShowDeleted((s) => !s)} aria-expanded={showDeleted}>
-                <span>المحذوفة — للإدمن فقط ({deleted.length})</span>
-                <ChevronDown className={`chev${showDeleted ? ' up' : ''}`} size={16} />
-              </button>
-              {showDeleted && (
-                <div className="deleted-list">
-                  {deleted.length === 0 && <p className="muted small pad">لا توجد محذوفات.</p>}
-                  {deleted.map((a) => (
-                    <div key={a.id} className="deleted-row">
-                      <div>
-                        <b>{a.title}</b>
-                        <span className="muted small">
-                          {' '}
-                          · {TYPES[a.type].label} · بواسطة {a.authorName}
-                          {a.replyCount ? ` · ${a.replyCount} رد` : ''}
-                        </span>
-                      </div>
-                      <div className="row-actions">
-                        <button className="chip-btn" onClick={() => actions.restore(a)}>
-                          استعادة
-                        </button>
-                        <button
-                          className="chip-btn danger"
-                          onClick={() =>
-                            window.confirm('حذف نهائي بدون تراجع (مع الردود والصورة)؟') && actions.purge(a)
-                          }
-                        >
-                          حذف نهائي
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-        </main>
-
-        <footer className="foot">
-          <button className="link-btn" onClick={() => setCoursesOpen(true)}>
+        <nav className="main-tabs" role="tablist" aria-label="أقسام الصفحة">
+          <button
+            role="tab"
+            aria-selected={tab === 'alerts'}
+            className={tab === 'alerts' ? 'on' : ''}
+            onClick={() => setTab('alerts')}
+          >
+            التنبيهات
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'courses'}
+            className={tab === 'courses' ? 'on' : ''}
+            onClick={() => setTab('courses')}
+          >
             المقررات الدراسية
           </button>
-          <span aria-hidden="true">·</span>
+        </nav>
+
+        {tab === 'courses' && (
+          <main>
+            <CoursesPanel />
+          </main>
+        )}
+
+        {tab === 'alerts' && (
+          <>
+            <p className="summary" aria-live="polite">
+              {loading ? 'جارٍ التحميل…' : active.length ? summaryLine(active) : 'لا توجد تنبيهات نشطة'}
+            </p>
+
+            {!online && (
+              <div className="notice warn">
+                لا يوجد اتصال بالإنترنت — تعرض آخر نسخة محفوظة، وستتحدث تلقائيًا عند عودة الاتصال.
+              </div>
+            )}
+            {online && error && <div className="notice warn">تعذر تحديث التنبيهات من الخادم. سنحاول تلقائيًا…</div>}
+            {online && !error && !loading && fromCache && alerts.length === 0 && (
+              <div className="notice">جارٍ الاتصال بالخادم…</div>
+            )}
+
+            {showBanner && (
+              <div className="push-banner">
+                <BellIcon size={16} />
+                <span>{banner.text}</span>
+                <button className="link-btn strong" onClick={() => setNotifyOpen(true)}>
+                  {banner.cta}
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label="إخفاء"
+                  onClick={() => {
+                    setBannerDismissed(pushState);
+                    writeLocal(KEYS.pushDismissed, pushState);
+                  }}
+                >
+                  <XIcon size={14} />
+                </button>
+              </div>
+            )}
+
+            {(active.length > 2 || filtered) && (
+              <div className="filters" role="toolbar" aria-label="تصفية">
+                <div className="chips">
+                  <button
+                    className={`fchip${filters.type === 'all' ? ' on' : ''}`}
+                    onClick={() => setFilters((f) => ({ ...f, type: 'all' }))}
+                  >
+                    الكل
+                  </button>
+                  {TYPE_ORDER.map((t) => (
+                    <button
+                      key={t}
+                      className={`fchip${filters.type === t ? ' on' : ''}`}
+                      style={
+                        filters.type === t
+                          ? { background: TYPES[t].bg, color: TYPES[t].fg, borderColor: TYPES[t].fg }
+                          : undefined
+                      }
+                      onClick={() => setFilters((f) => ({ ...f, type: f.type === t ? 'all' : t }))}
+                    >
+                      {TYPES[t].label}
+                    </button>
+                  ))}
+                  <span className="select-wrap small">
+                    <select
+                      value={filters.subject}
+                      onChange={(e) => setFilters((f) => ({ ...f, subject: e.target.value }))}
+                      aria-label="المادة"
+                    >
+                      <option value="all">كل المواد</option>
+                      {SUBJECTS.map((s) => (
+                        <option key={s.id} value={s.id}>
+                          {s.name}
+                        </option>
+                      ))}
+                    </select>
+                    <ChevronDown size={14} className="select-chev" />
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <main>
+              {view === 'grid' ? (
+                <>
+                  <h2 className="section-title">التنبيهات المرفق فيها صور</h2>
+                  <GridView
+                    alerts={shownActive}
+                    now={now}
+                    onOpen={(id) => {
+                      setView('list');
+                      setExpandedId(id);
+                      scrolledTo.current = null;
+                    }}
+                  />
+                </>
+              ) : loading ? (
+                <div className="cards">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="card skeleton" />
+                  ))}
+                </div>
+              ) : shownActive.length === 0 ? (
+                <div className="empty">
+                  {filtered ? (
+                    <>
+                      <p className="empty-title">لا توجد تنبيهات نشطة بهذا التصفية</p>
+                      <button className="link-btn strong" onClick={() => setFilters({ type: 'all', subject: 'all' })}>
+                        عرض الكل
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <p className="empty-title">لا توجد تنبيهات نشطة حاليًا</p>
+                      <p className="muted">أي واجب أو اختبار أو إعلان جديد سيظهر هنا فورًا لكل الشعبة.</p>
+                      <button className="chip-btn" onClick={() => setForm({ editing: null })}>
+                        <PlusIcon size={15} /> أضف أول تنبيه
+                      </button>
+                    </>
+                  )}
+                </div>
+              ) : isDesktop ? (
+                <AlertTable alerts={shownActive} now={now} nearestId={shownNearest?.id ?? null} />
+              ) : (
+                <>
+                  {shownNearest && <AlertCard alert={shownNearest} now={now} nearest />}
+                  {shownActive.length > (shownNearest ? 1 : 0) && (
+                    <>
+                      <h2 className="section-title">التنبيهات النشطة</h2>
+                      <div className="cards">
+                        {shownActive
+                          .filter((a) => a !== shownNearest)
+                          .map((a) => (
+                            <AlertCard key={a.id} alert={a} now={now} />
+                          ))}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+
+              {view === 'list' && !loading && (
+                <section className="archive">
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowArchive((s) => !s)}
+                    aria-expanded={showArchive}
+                  >
+                    <span>المنتهية والأرشيف ({shownArchived.length})</span>
+                    <ChevronDown className={`chev${showArchive ? ' up' : ''}`} size={16} />
+                  </button>
+                  {showArchive && (
+                    <>
+                      {shownArchived.length === 0 ? (
+                        <p className="muted small pad">لا يوجد شيء في الأرشيف بعد.</p>
+                      ) : (
+                        renderList(shownArchived, { ended: true })
+                      )}
+                      {older === null && (
+                        <button
+                          className="link-btn pad"
+                          disabled={olderBusy}
+                          onClick={() => {
+                            setOlderBusy(true);
+                            loadOlderArchive()
+                              .then(setOlder, () => toast({ text: 'تعذر تحميل الأرشيف الأقدم', kind: 'error' }))
+                              .finally(() => setOlderBusy(false));
+                          }}
+                        >
+                          {olderBusy ? 'جارٍ التحميل…' : 'تحميل الأرشيف الأقدم (أكثر من 30 يومًا)'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </section>
+              )}
+
+              {isAdmin && view === 'list' && (
+                <section className="archive admin-zone">
+                  <button
+                    className="section-toggle"
+                    onClick={() => setShowDeleted((s) => !s)}
+                    aria-expanded={showDeleted}
+                  >
+                    <span>المحذوفة — للإدمن فقط ({deleted.length})</span>
+                    <ChevronDown className={`chev${showDeleted ? ' up' : ''}`} size={16} />
+                  </button>
+                  {showDeleted && (
+                    <div className="deleted-list">
+                      {deleted.length === 0 && <p className="muted small pad">لا توجد محذوفات.</p>}
+                      {deleted.map((a) => (
+                        <div key={a.id} className="deleted-row">
+                          <div>
+                            <b>{a.title}</b>
+                            <span className="muted small">
+                              {' '}
+                              · {TYPES[a.type].label} · بواسطة {a.authorName}
+                              {a.replyCount ? ` · ${a.replyCount} رد` : ''}
+                            </span>
+                          </div>
+                          <div className="row-actions">
+                            <button className="chip-btn" onClick={() => actions.restore(a)}>
+                              استعادة
+                            </button>
+                            <button
+                              className="chip-btn danger"
+                              onClick={() =>
+                                window.confirm('حذف نهائي بدون تراجع (مع الردود والصورة)؟') && actions.purge(a)
+                              }
+                            >
+                              حذف نهائي
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+            </main>
+          </>
+        )}
+
+        <footer className="foot">
           <button className="link-btn" onClick={() => setNotifyOpen(true)}>
             الإشعارات
           </button>
@@ -515,7 +549,7 @@ function Board({ uid }: { uid: string }) {
           </button>
         </footer>
 
-        {!isDesktop && !typing && (
+        {!isDesktop && !typing && tab === 'alerts' && (
           <div className="fab-wrap">
             <button className="primary-btn fab" onClick={() => setForm({ editing: null })}>
               <PlusIcon /> إضافة تنبيه
@@ -537,7 +571,6 @@ function Board({ uid }: { uid: string }) {
         )}
         {notifyOpen && <NotifyPanel state={pushState} setState={setPushState} onClose={() => setNotifyOpen(false)} />}
         {adminOpen && <AdminDialog isAdmin={isAdmin} onChange={setIsAdmin} onClose={() => setAdminOpen(false)} />}
-        {coursesOpen && <CoursesSheet onClose={() => setCoursesOpen(false)} />}
         {viewerSrc && (
           <div className="viewer" onClick={() => setViewerSrc(null)} role="dialog" aria-label="عرض الصورة">
             <img src={viewerSrc} alt="" />

@@ -1404,9 +1404,38 @@ main {
   left: 16px;
 }
 
+/* ───────── التبويبات الرئيسية ───────── */
+.main-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 18px;
+  padding: 4px;
+  background: #ede4d2;
+  border-radius: 14px;
+}
+.main-tabs button {
+  flex: 1;
+  height: 46px;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.main-tabs button.on {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(30, 59, 46, 0.25);
+}
+
 /* ───────── المقررات الدراسية ───────── */
-.courses-body {
-  padding-bottom: calc(20px + var(--safe-b));
+.courses-panel {
+  background: var(--card);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 16px 6px;
 }
 .courses-intro {
   margin: 0 0 14px;
@@ -1421,8 +1450,8 @@ main {
 .course-subject {
   border-bottom: 1px solid var(--line);
 }
-.course-subject:first-child {
-  border-top: 1px solid var(--line);
+.course-subject:last-child {
+  border-bottom: 0;
 }
 .course-subject-head {
   display: flex;
