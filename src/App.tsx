@@ -9,12 +9,13 @@ import { useOnline } from './hooks/useOnline';
 import { KEYS, readLocal, writeLocal } from './lib/local';
 import { applyFilters, partition, summaryLine, type Alert, type Filters } from './lib/model';
 import { AdminDialog } from './components/AdminDialog';
+import { CoursesSheet } from './components/CoursesSheet';
 import { AlertCard } from './components/AlertCard';
 import { AlertForm } from './components/AlertForm';
 import { AlertTable } from './components/AlertTable';
 import { AppContext, type AppCtx } from './components/AppContext';
 import { GridView } from './components/GridView';
-import { BellIcon, ChevronDown, GridIcon, ListIcon, PlusIcon, XIcon } from './components/Icons';
+import { BellIcon, BookIcon, ChevronDown, GridIcon, ListIcon, PlusIcon, XIcon } from './components/Icons';
 import { NotifyPanel, pushBannerText } from './components/NotifyPanel';
 import { useToast } from './components/Toasts';
 import { useAlertActions } from './components/useAlertActions';
@@ -101,6 +102,7 @@ function Board({ uid }: { uid: string }) {
   const [olderBusy, setOlderBusy] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
+  const [coursesOpen, setCoursesOpen] = useState(false);
   const [deleted, setDeleted] = useState<Alert[]>([]);
   const [showDeleted, setShowDeleted] = useState(false);
   const [pushState, setPushState] = useState<PushState>('checking');
@@ -280,6 +282,9 @@ function Board({ uid }: { uid: string }) {
               {pushState !== 'enabled' && pushState !== 'checking' && pushState !== 'not-configured' && (
                 <span className="dot" />
               )}
+            </button>
+            <button className="icon-btn round" onClick={() => setCoursesOpen(true)} aria-label="المقررات الدراسية">
+              <BookIcon />
             </button>
             {isDesktop && (
               <button className="primary-btn add-desktop" onClick={() => setForm({ editing: null })}>
@@ -497,6 +502,10 @@ function Board({ uid }: { uid: string }) {
         </main>
 
         <footer className="foot">
+          <button className="link-btn" onClick={() => setCoursesOpen(true)}>
+            المقررات الدراسية
+          </button>
+          <span aria-hidden="true">·</span>
           <button className="link-btn" onClick={() => setNotifyOpen(true)}>
             الإشعارات
           </button>
@@ -528,6 +537,7 @@ function Board({ uid }: { uid: string }) {
         )}
         {notifyOpen && <NotifyPanel state={pushState} setState={setPushState} onClose={() => setNotifyOpen(false)} />}
         {adminOpen && <AdminDialog isAdmin={isAdmin} onChange={setIsAdmin} onClose={() => setAdminOpen(false)} />}
+        {coursesOpen && <CoursesSheet onClose={() => setCoursesOpen(false)} />}
         {viewerSrc && (
           <div className="viewer" onClick={() => setViewerSrc(null)} role="dialog" aria-label="عرض الصورة">
             <img src={viewerSrc} alt="" />

@@ -1404,6 +1404,95 @@ main {
   left: 16px;
 }
 
+/* ───────── المقررات الدراسية ───────── */
+.courses-body {
+  padding-bottom: calc(20px + var(--safe-b));
+}
+.courses-intro {
+  margin: 0 0 14px;
+}
+.course-subjects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.course-subject {
+  border-bottom: 1px solid var(--line);
+}
+.course-subject:first-child {
+  border-top: 1px solid var(--line);
+}
+.course-subject-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  padding: 14px 2px;
+  text-align: start;
+}
+.course-subject-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+}
+.course-subject-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.course-files {
+  padding: 0 2px 14px;
+}
+.course-files ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.course-empty {
+  padding: 2px 0 4px;
+}
+.course-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--text);
+}
+.course-file:hover {
+  background: #efe6d3;
+}
+.course-file-icon {
+  color: var(--primary);
+  flex-shrink: 0;
+}
+.course-file-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.course-file-meta {
+  font-size: 11px;
+  color: var(--muted);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,

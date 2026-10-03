@@ -16,7 +16,8 @@
     "test:rules": "node scripts/gen-rules.mjs && firebase emulators:exec --only auth,firestore --project demo-section3 \"vitest run --config vitest.emulator.config.ts\"",
     "test:e2e": "SECTION_SLUG=e2e-section-test node scripts/gen-rules.mjs && firebase emulators:exec --only auth,firestore --project demo-section3 \"playwright test\"",
     "notify": "node notifier/run.mjs",
-    "admin:set-code": "node notifier/set-admin-code.mjs"
+    "admin:set-code": "node notifier/set-admin-code.mjs",
+    "courses:manifest": "node scripts/gen-courses-manifest.mjs"
   },
   "dependencies": {
     "firebase": "^12.19.0",

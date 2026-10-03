@@ -73,3 +73,18 @@ export const ReplyIcon = ({ size = 14, className }: P) =>
   svg(size, className, <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />);
 export const ShareIcon = ({ size = 16, className }: P) =>
   svg(size, className, <path d="M12 3v12M7 8l5-5 5 5M5 13v6a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-6" />);
+export const BookIcon = ({ size = 18, className }: P) =>
+  svg(
+    size,
+    className,
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20V2H6.5A2.5 2.5 0 0 0 4 4.5v15Z" />,
+  );
+export const FileDownIcon = ({ size = 15, className }: P) =>
+  svg(
+    size,
+    className,
+    <>
+      <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z" />
+      <path d="M14 2v6h6M12 11v6M9.5 14.5 12 17l2.5-2.5" />
+    </>,
+  );
