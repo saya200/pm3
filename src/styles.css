@@ -1492,15 +1492,18 @@ main {
 }
 .course-file {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 10px 10px 12px;
   border-radius: 12px;
   background: var(--bg);
   color: var(--text);
 }
-.course-file:hover {
-  background: #efe6d3;
+.course-file-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
 }
 .course-file-icon {
   color: var(--primary);
@@ -1520,6 +1523,31 @@ main {
   color: var(--muted);
   flex-shrink: 0;
   white-space: nowrap;
+}
+.course-file-actions {
+  display: flex;
+  gap: 6px;
+}
+.course-file-action {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 36px;
+  min-width: 0;
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.course-file-action:hover {
+  background: #efe6d3;
+}
+.course-file-action svg {
+  flex-shrink: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {

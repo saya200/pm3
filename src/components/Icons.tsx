@@ -88,3 +88,21 @@ export const FileDownIcon = ({ size = 15, className }: P) =>
       <path d="M14 2v6h6M12 11v6M9.5 14.5 12 17l2.5-2.5" />
     </>,
   );
+export const ExternalLinkIcon = ({ size = 15, className }: P) =>
+  svg(
+    size,
+    className,
+    <>
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <path d="M15 3h6v6M10 14 21 3" />
+    </>,
+  );
+export const DownloadIcon = ({ size = 15, className }: P) =>
+  svg(
+    size,
+    className,
+    <>
+      <path d="M12 3v12m0 0-4-4m4 4 4-4" />
+      <path d="M5 21h14" />
+    </>,
+  );
